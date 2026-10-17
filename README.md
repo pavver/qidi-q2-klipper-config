@@ -2,7 +2,7 @@
 
 This repository contains clean backups and optimized Klipper/Moonraker configuration files for the **QIDI Q2 (Plus 4)** 3D printer.
 
-The configuration is tailored for daily, reliable printing **without a multi-material system (AMS / QIDI Box)**: it eliminates unnecessary mechanical wear, stops wasteful filament purging, and dramatically speeds up the pre-print calibration routine.
+The configuration is tailored for daily, reliable printing **without a multi-material system (AMS / QIDI Box)**: it eliminates unnecessary mechanical wear, stops wasteful filament purging, speeds up calibration routines, and adds helpful bed-tramming and audio assistants.
 
 ---
 
@@ -27,25 +27,27 @@ Pre-print bed calibration time is cut almost in half without compromising precis
 * **The Fix:** Commented out extrusion and retraction lines (`G1 E5`, `G1 E80`, `G1 E-2`) in `CLEAR_NOZZLE`.
 * **How Wiping Works Now:** The nozzle heats over the chute to soften any old filament residue, activates the part cooling fan at 100%, and cools down to 140°C while actively scrubbing across the silicone brush and scraper. The nozzle tip lands on the bed completely clean, rigid, and cold for accurate load-cell probing, while extruder priming is handled by the standard purge line on the build plate right before the model begins.
 
+### 4. Interactive Bed Screw Tramming Assistant (`SCREWS_TILT_CALCULATE`)
+* **Feature:** Added `[screws_tilt_adjust]` with CW-M4 threads mapped directly to the 4 bed leveling thumb screws.
+* **Ukrainian Guidance:** Added custom macro wrapper that prints clear Ukrainian instructions directly to the console:
+  * `CW` = Turn clockwise (right ↻)
+  * `CCW` = Turn counter-clockwise (left ↺)
+  * Clock minutes (e.g. `00:15`) = Quarter turn (15 minutes on a clock face)
+* Lets you mechanically level the bed plate in under 2 minutes.
+
+### 5. Completion Sound Notification (`BEEP`)
+* Replaced sluggish double-beep with 3 crisp, distinct beeps (`BEEP I=3 DUR=200`) in `PRINT_END` so you immediately know when your print has completed.
+
+### 6. Smoother Camera Streaming (30 FPS)
+* Raised camera framerate in `crowsnest.conf` from 15 FPS to **30 FPS**, taking full advantage of the hardware MJPG encoder on the internal camera for much smoother live video streaming in Fluidd/Mainsail.
+
 ---
 
 ## 📂 Repository Structure
 
-* `printer.cfg` — Main Klipper configuration (kinematics, TMC stepper drivers, axis limits, `probe_air` sensor, `[bed_mesh]`, and `[z_tilt]`).
-* `klipper-macros-qd/gcode_macro.cfg` — Core QIDI macros (`PRINT_START`, `CLEAR_NOZZLE`, `G29`, `M603`, etc.).
+* `printer.cfg` — Main Klipper configuration (kinematics, TMC stepper drivers, axis limits, `probe_air` sensor, `[bed_mesh]`, `[z_tilt]`, and `[screws_tilt_adjust]`).
+* `klipper-macros-qd/gcode_macro.cfg` — Core QIDI macros (`PRINT_START`, `CLEAR_NOZZLE`, `G29`, `SCREWS_TILT_CALCULATE`, `PRINT_END`, etc.).
 * `klipper-macros-qd/KAMP_Settings.cfg` — KAMP adaptive mesh configuration.
 * `moonraker.conf` — Moonraker API server configuration.
 * `MCU_ID.cfg` — Toolhead and mainboard MCU serial IDs.
-* `crowsnest.conf`, `timelapse.cfg` — Webcam streaming and timelapse settings.
-
----
-
-## 📜 Commit History
-
-Each optimization is recorded in a distinct, clean Git commit:
-1. `Initial backup of QIDI Q2 config from printer` — Pristine factory configuration snapshot.
-2. `Disable CUT_FILAMENT_1 in PRINT_START` — Disabled automatic filament cutting before leveling.
-3. `Optimize bed leveling speed and remove redundant homing and pauses` — Speed up bed probing and Z-tilt.
-4. `Disable chute purge (poop) in CLEAR_NOZZLE` — Disabled 85 mm purge into the waste chute.
-5. `Add detailed README with overview and optimizations` — Initial Ukrainian documentation.
-6. `Translate README to English` — English documentation for the community.
+* `crowsnest.conf`, `timelapse.cfg` — Webcam streaming (30 FPS) and timelapse settings.
