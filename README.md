@@ -2,7 +2,7 @@
 
 This repository contains clean backups and optimized Klipper/Moonraker configuration files for the **QIDI Q2 (Plus 4)** 3D printer.
 
-The configuration is tailored for daily, reliable printing **without a multi-material system (AMS / QIDI Box)**: it eliminates unnecessary mechanical wear, stops wasteful filament purging, speeds up calibration routines, and adds helpful bed-tramming and audio assistants.
+The configuration is tailored for daily, reliable printing **without a multi-material system (AMS / QIDI Box)**: it eliminates unnecessary mechanical wear, stops wasteful filament purging, speeds up calibration routines, calibrates input shaper frequencies, and bounds accelerations to safe, high-quality limits.
 
 ---
 
@@ -40,6 +40,15 @@ Pre-print bed calibration time is cut almost in half without compromising precis
 
 ### 6. Smoother Camera Streaming (30 FPS)
 * Raised camera framerate in `crowsnest.conf` from 15 FPS to **30 FPS**, taking full advantage of the hardware MJPG encoder on the internal camera for much smoother live video streaming in Fluidd/Mainsail.
+
+### 7. Calibrated Input Shaper & Realistic Acceleration Limits
+* **Measured Frequencies (LIS2DW Accelerometer):**
+  * X axis: `shaper_type_x = ei`, `shaper_freq_x = 43.8 Hz` (residual vibrations ~6.2%).
+  * Y axis: `shaper_type_y = mzv`, `shaper_freq_y = 47.8 Hz` (residual vibrations **0.2%**).
+* **Safe Acceleration Limits:**
+  * Lowered theoretical `max_accel` from 20,000 mm/s² down to a realistic **6,000 mm/s²** in `[printer]`.
+  * Lowered macro defaults in `PRINT_START`, `PAUSE`, `RESUME`, `CANCEL_PRINT` from 10,000 to **5,000 mm/s²**.
+  * Added auto-clamping in `M204` to prevent slicer commands from exceeding `max_accel`, eliminating corner rounding and motor jerking.
 
 ---
 
