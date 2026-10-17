@@ -1,50 +1,51 @@
-# QIDI Q2 / Plus 4 — Оптимізована конфігурація Klipper
+# QIDI Q2 / Plus 4 — Optimized Klipper Configuration
 
-Цей репозиторій містить резервну копію та оптимізовані файли конфігурації для 3D-принтера **QIDI Q2 (Plus 4)** під керуванням Klipper та Moonraker.
+This repository contains clean backups and optimized Klipper/Moonraker configuration files for the **QIDI Q2 (Plus 4)** 3D printer.
 
-Конфігурацію оптимізовано для щоденного комфортного друку **без використання системи багатоколірного друку (AMS / QIDI Box)**: прибрано зайвий знос механіки, усунуто марнотратство філаменту та значно прискорено процедуру калібрування перед друком.
-
----
-
-## 🛠 Ключові зміни та оптимізації
-
-### 1. Вимкнено холосте відрізання філаменту перед стартом (`CUT_FILAMENT_1`)
-* **Проблема:** За замовчуванням прошивка QIDI виконувала механічне відрізання прутка ножем перед калібруванням столу на кожному старті друку. За відсутності AMS це не має сенсу: відрізаний шматочок залишався в екструдері, а лезо ножа та механізм зношувалися дарма.
-* **Рішення:** Рядок `CUT_FILAMENT_1` у макросі `PRINT_START` (`klipper-macros-qd/gcode_macro.cfg`) акуратно закоментовано. 
-* **Примітка:** При ручній зміні або вивантаженні філаменту через меню (`M603`) ніж продовжує штатно працювати.
-
-### 2. Прискорення калібрування столу та вирівнювання балки (`Z_TILT` & `bed_mesh`)
-Процедуру перевірки столу перед друком скорочено за часом майже вдвічі без втрати точності:
-* **Збережено 2 виміри (`samples: 2`):** сопло, як і раніше, двічі торкається кожної точки для максимальної надійності тензодатчика.
-* **Швидкість відскоку:** `lift_speed` у `[probe_air]` збільшено з 5 мм/с до **10 мм/с**.
-* **Висота підйому сопла:** `horizontal_move_z` зменшено з 5.0 мм до **3.0 мм** (у блоках `[bed_mesh]` та `[z_tilt]`), що заощаджує час на кожному переїзді.
-* **Швидкість переміщень:** `speed` перельотів між точками збільшено з 100/150 мм/с до **250 мм/с**.
-* **Прибрано повторне хоумування:** У макросі `G29` безумовний `G28` замінено на умовний `_CG28`. При старті друку принтер більше не витрачає 15 секунд на повторний пошук кінцевиків.
-* **Прибрано паузи:** Видалено штучні затримки `G4 P3000` (3 сек) та `G4 P5000` (5 сек).
-
-### 3. Очищення сопла без продувки ("No-Poop" mod у `CLEAR_NOZZLE`)
-* **Проблема:** Перед очищенням сопла об силіконову щіточку принтер щоразу видавлював у відстійник 85 мм пластику. Для одного кольору це створювало гору сміття, забруднювало саму щітку розплавом і забирало зайвий час.
-* **Рішення:** У макросі `CLEAR_NOZZLE` закоментовано екструзію (`G1 E5`, `G1 E80`).
-* **Як тепер працює витирання:** Сопло нагрівається над лотком, розм'якшуючи нагар, вмикає вентилятор на 100% і під час остигання до 140°C ретельно витирається об силіконову щітку та скребок. 
-* На стіл для калібрування голівка виходить з ідеально чистим, холодним металевим кінчиком, а робочий тиск екструдера відновлюється штатною смужкою на столі (Purge Line) безпосередньо перед деталлю.
+The configuration is tailored for daily, reliable printing **without a multi-material system (AMS / QIDI Box)**: it eliminates unnecessary mechanical wear, stops wasteful filament purging, and dramatically speeds up the pre-print calibration routine.
 
 ---
 
-## 📂 Структура репозиторію
+## 🛠 Key Improvements & Optimizations
 
-* `printer.cfg` — головний конфігураційний файл Klipper (кінематика, мотори TMC, ліміти, сенсор `probe_air`, налаштування `[bed_mesh]` та `[z_tilt]`).
-* `klipper-macros-qd/gcode_macro.cfg` — основні макроси QIDI (`PRINT_START`, `CLEAR_NOZZLE`, `G29`, `M603` тощо).
-* `klipper-macros-qd/KAMP_Settings.cfg` — конфігурація адаптивної сітки KAMP.
-* `moonraker.conf` — налаштування веб-сервера Moonraker.
-* `MCU_ID.cfg` — ідентифікатор плати керування принтера.
-* `crowsnest.conf`, `timelapse.cfg` — налаштування камери та таймлапсів.
+### 1. Disabled Redundant Filament Cutting at Print Start (`CUT_FILAMENT_1`)
+* **The Problem:** By default, stock QIDI firmware executes a mechanical filament cut using the toolhead lever before bed leveling on every print start. Without an AMS/Box, this serves no purpose: the cut stub remains inside the extruder and heatbreak, while the blade and drive mechanism suffer unnecessary wear and tear.
+* **The Fix:** The `CUT_FILAMENT_1` command in the `PRINT_START` macro (`klipper-macros-qd/gcode_macro.cfg`) has been commented out.
+* **Note:** Manual filament unloading via the touchscreen or macro (`M603`) continues to use the cutter as intended.
+
+### 2. Accelerated Bed Leveling & Dual-Z Tilt Alignment (`Z_TILT` & `bed_mesh`)
+Pre-print bed calibration time is cut almost in half without compromising precision:
+* **Preserved Dual-Probing (`samples: 2`):** Retains two probe touches per point for maximum strain-gauge/load-cell accuracy.
+* **Faster Z Lift Speed:** `lift_speed` in `[probe_air]` increased from 5 mm/s to **10 mm/s**.
+* **Reduced Clearance Height:** `horizontal_move_z` lowered from 5.0 mm to **3.0 mm** (in both `[bed_mesh]` and `[z_tilt]`), cutting vertical travel time between points.
+* **Faster Travel Speeds:** XY travel speed (`speed`) between mesh points increased from 100/150 mm/s to **250 mm/s**.
+* **Eliminated Redundant Homing:** Replaced unconditional `G28` in `G29` with conditional homing `_CG28`. The printer no longer wastes 15 seconds re-homing axes during print start.
+* **Removed Artificial Delays:** Removed arbitrary hardcoded pauses `G4 P3000` (3s) and `G4 P5000` (5s).
+
+### 3. Nozzle Cleaning Without Purging ("No-Poop" mod in `CLEAR_NOZZLE`)
+* **The Problem:** Before wiping the nozzle on the silicone brush, stock firmware flushed 85 mm of filament into the rear purge chute on every single print. For single-color printing, this creates heaps of plastic waste, fouls the silicone brush with molten blobs, and wastes time.
+* **The Fix:** Commented out extrusion and retraction lines (`G1 E5`, `G1 E80`, `G1 E-2`) in `CLEAR_NOZZLE`.
+* **How Wiping Works Now:** The nozzle heats over the chute to soften any old filament residue, activates the part cooling fan at 100%, and cools down to 140°C while actively scrubbing across the silicone brush and scraper. The nozzle tip lands on the bed completely clean, rigid, and cold for accurate load-cell probing, while extruder priming is handled by the standard purge line on the build plate right before the model begins.
 
 ---
 
-## 📜 Історія змін (Git)
+## 📂 Repository Structure
 
-Кожна зміна зафіксована окремим комітом:
-1. `Initial backup of QIDI Q2 config from printer` — початковий чистий стан прошивки з заводу.
-2. `Disable CUT_FILAMENT_1 in PRINT_START` — відключення відрізання прутка при старті.
-3. `Optimize bed leveling speed and remove redundant homing and pauses` — прискорення зондування столу.
-4. `Disable chute purge (poop) in CLEAR_NOZZLE` — відключення скидання 85 мм пластику у відстійник.
+* `printer.cfg` — Main Klipper configuration (kinematics, TMC stepper drivers, axis limits, `probe_air` sensor, `[bed_mesh]`, and `[z_tilt]`).
+* `klipper-macros-qd/gcode_macro.cfg` — Core QIDI macros (`PRINT_START`, `CLEAR_NOZZLE`, `G29`, `M603`, etc.).
+* `klipper-macros-qd/KAMP_Settings.cfg` — KAMP adaptive mesh configuration.
+* `moonraker.conf` — Moonraker API server configuration.
+* `MCU_ID.cfg` — Toolhead and mainboard MCU serial IDs.
+* `crowsnest.conf`, `timelapse.cfg` — Webcam streaming and timelapse settings.
+
+---
+
+## 📜 Commit History
+
+Each optimization is recorded in a distinct, clean Git commit:
+1. `Initial backup of QIDI Q2 config from printer` — Pristine factory configuration snapshot.
+2. `Disable CUT_FILAMENT_1 in PRINT_START` — Disabled automatic filament cutting before leveling.
+3. `Optimize bed leveling speed and remove redundant homing and pauses` — Speed up bed probing and Z-tilt.
+4. `Disable chute purge (poop) in CLEAR_NOZZLE` — Disabled 85 mm purge into the waste chute.
+5. `Add detailed README with overview and optimizations` — Initial Ukrainian documentation.
+6. `Translate README to English` — English documentation for the community.
