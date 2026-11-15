@@ -114,7 +114,7 @@ A QIDI firmware update **overwrites `printer.cfg`, `gcode_macro.cfg` and `crowsn
    * If `PRINT_START`, `CLEAR_NOZZLE`, `PRINT_END` or `G29` changed, port QIDI's changes into `custom_overrides.cfg`. Otherwise this file would hide them.
    * If nothing relevant changed, you only need to re-add the `[include custom_overrides.cfg]` line.
 3. Re-run `SHAPER_CALIBRATE` and bed meshing.
-4. Check whether the [filament loading fix](#-firmware-bug-fix-filament-loading-hangs-at-step-2) is still needed.
+4. Check whether the [filament loading fix](#-firmware-bug-fix-filament-loading-hangs-at-step-2) is still needed. Put fixes for the new firmware into a new `fixes/<new version>/` folder.
 
 ---
 
@@ -147,7 +147,7 @@ Also new in this firmware, outside the config: the [filament loading bug](#-firm
 > ```
 > !! Unable to parse 'slot16' as a literal
 > ```
-> **run [`fixes/fix_save_variable_unquoted.sh`](fixes/fix_save_variable_unquoted.sh) on the printer (see "How to apply" below). It fixes the problem.**
+> **run [`fixes/01.01.03.02/fix_save_variable_unquoted.sh`](fixes/01.01.03.02/fix_save_variable_unquoted.sh) on the printer (see "How to apply" below). It fixes the problem.**
 >
 > The script is **not** applied by installing this config. You have to run it manually once.
 
@@ -160,7 +160,7 @@ Also new in this firmware, outside the config: the [filament loading bug](#-firm
   * **Default SSH credentials:** login `mks`, password `makerbase`. The `mks` user can run `sudo` with the same password, which the script needs.
   * `<printer-ip>` is the printer's IP address (shown on the printer screen under network settings), or its hostname if you have one set up (e.g. `klipper.local`).
   ```bash
-  scp fixes/fix_save_variable_unquoted.sh mks@<printer-ip>:/tmp/
+  scp fixes/01.01.03.02/fix_save_variable_unquoted.sh mks@<printer-ip>:/tmp/
   ssh mks@<printer-ip>
   bash /tmp/fix_save_variable_unquoted.sh            # apply
   bash /tmp/fix_save_variable_unquoted.sh --revert   # undo
@@ -174,7 +174,8 @@ Also new in this firmware, outside the config: the [filament loading bug](#-firm
 
 **Own files (root):**
 * `custom_overrides.cfg` — **all tweaks**. Upload it next to `printer.cfg` and include it at the end of `printer.cfg`.
-* `fixes/fix_save_variable_unquoted.sh` — patch for the "Unable to parse 'slot16' as a literal" filament loading bug (run on the printer via SSH).
+* `fixes/<firmware version>/` — fixes for bugs of a specific firmware version. Each fix lives in the folder of the firmware it was made and tested for. Do not run it on other versions without checking.
+  * `fixes/01.01.03.02/fix_save_variable_unquoted.sh` — patch for the "Unable to parse 'slot16' as a literal" filament loading bug (run on the printer via SSH).
 
 **Stock QIDI files (`stock/<firmware version>/`):**
 * [`stock/01.01.02.04/`](stock/01.01.02.04/) — the same for the previous firmware `QD_Q2_01.01.02.04`. Taken from the first backup of this printer, before any tweaks.
