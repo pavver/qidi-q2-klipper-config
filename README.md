@@ -1,64 +1,131 @@
-# QIDI Q2 / Plus 4 — Optimized Klipper Configuration
+# QIDI Q2 — Optimized Klipper Configuration
 
-This repository contains clean backups and optimized Klipper/Moonraker configuration files for the **QIDI Q2 (Plus 4)** 3D printer.
+Klipper/Moonraker configuration for the **QIDI Q2** 3D printer (270×270 mm bed), tuned for daily single-spool printing **without a QIDI Box**: no filament cutting and purging at every print start, faster bed leveling, sane acceleration limits and a few quality-of-life helpers.
 
-The configuration is tailored for daily, reliable printing **without a multi-material system (AMS / QIDI Box)**: it eliminates unnecessary mechanical wear, stops wasteful filament purging, speeds up calibration routines, calibrates input shaper frequencies, and bounds accelerations to safe, high-quality limits.
+All changes live in one file, [`custom_overrides.cfg`](custom_overrides.cfg), on top of the **unchanged stock QIDI config**. Because of that, QIDI's own macros and multi-color logic keep working.
+
+> [!IMPORTANT]
+> **Tested on firmware `QD_Q2_01.01.03.02`** (SOC build `01.01.03.02_20261023`).
+>
+> On a **newer firmware**, do not just copy the files. QIDI changes stock macros between releases, and `custom_overrides.cfg` contains full copies of four of them (`PRINT_START`, `CLEAR_NOZZLE`, `PRINT_END`, `G29`). First compare your new stock `gcode_macro.cfg` with [`stock/01.01.03.02/`](stock/01.01.03.02/) (see [After a firmware update](#-after-a-firmware-update)).
+>
+> This config is **not** for the QIDI Plus 4 (different bed size and axis limits).
 
 ---
 
-## 🛠 Key Improvements & Optimizations
+## 🧱 How This Config Works (and Why It Changed)
 
-### 1. Disabled Redundant Filament Cutting at Print Start (`CUT_FILAMENT_1`)
-* **The Problem:** By default, stock QIDI firmware executes a mechanical filament cut using the toolhead lever before bed leveling on every print start. Without an AMS/Box, this serves no purpose: the cut stub remains inside the extruder and heatbreak, while the blade and drive mechanism suffer unnecessary wear and tear.
-* **The Fix:** The `CUT_FILAMENT_1` command in the `PRINT_START` macro (`klipper-macros-qd/gcode_macro.cfg`) has been commented out.
-* **Note:** Manual filament unloading via the touchscreen or macro (`M603`) continues to use the cutter as intended.
+**Before (up to commit `87ebbd9`):** the tweaks were made directly inside the stock files `printer.cfg` and `klipper-macros-qd/gcode_macro.cfg`. You installed the config by replacing these files with the modified copies from this repository.
 
-### 2. Accelerated Bed Leveling & Dual-Z Tilt Alignment (`Z_TILT` & `bed_mesh`)
-Pre-print bed calibration time is cut almost in half without compromising precision:
-* **Preserved Dual-Probing (`samples: 2`):** Retains two probe touches per point for maximum strain-gauge/load-cell accuracy.
-* **Faster Z Lift Speed:** `lift_speed` in `[probe_air]` increased from 5 mm/s to **10 mm/s**.
-* **Reduced Clearance Height:** `horizontal_move_z` lowered from 5.0 mm to **3.0 mm** (in both `[bed_mesh]` and `[z_tilt]`), cutting vertical travel time between points.
-* **Faster Travel Speeds:** XY travel speed (`speed`) between mesh points increased from 100/150 mm/s to **250 mm/s**.
-* **Eliminated Redundant Homing:** Replaced unconditional `G28` in `G29` with conditional homing `_CG28`. The printer no longer wastes 15 seconds re-homing axes during print start.
-* **Removed Artificial Delays:** Removed arbitrary hardcoded pauses `G4 P3000` (3s) and `G4 P5000` (5s).
+**Now:** the stock files stay **unchanged**. All tweaks live in a separate file, `custom_overrides.cfg`, which is connected with one line at the end of `printer.cfg`:
 
-### 3. Nozzle Cleaning Without Purging ("No-Poop" mod in `CLEAR_NOZZLE`)
-* **The Problem:** Before wiping the nozzle on the silicone brush, stock firmware flushed 85 mm of filament into the rear purge chute on every single print. For single-color printing, this creates heaps of plastic waste, fouls the silicone brush with molten blobs, and wastes time.
-* **The Fix:** Commented out extrusion and retraction lines (`G1 E5`, `G1 E80`, `G1 E-2`) in `CLEAR_NOZZLE`.
-* **How Wiping Works Now:** The nozzle heats over the chute to soften any old filament residue, activates the part cooling fan at 100%, and cools down to 140°C while actively scrubbing across the silicone brush and scraper. The nozzle tip lands on the bed completely clean, rigid, and cold for accurate load-cell probing, while extruder priming is handled by the standard purge line on the build plate right before the model begins.
+```ini
+[include custom_overrides.cfg]
+```
 
-### 4. Interactive Bed Screw Tramming Assistant (`SCREWS_TILT_CALCULATE`)
-* **Feature:** Added `[screws_tilt_adjust]` with CW-M4 threads mapped directly to the 4 bed leveling thumb screws.
-* **Ukrainian Guidance:** Added custom macro wrapper that prints clear Ukrainian instructions directly to the console:
-  * `CW` = Turn clockwise (right ↻)
-  * `CCW` = Turn counter-clockwise (left ↺)
-  * Clock minutes (e.g. `00:15`) = Quarter turn (15 minutes on a clock face)
-* Lets you mechanically level the bed plate in under 2 minutes.
+Klipper reads the config from top to bottom, and **a later definition wins**. A section such as `[printer]` or `[bed_mesh]` that is defined again in `custom_overrides.cfg` overrides only the options listed there. A `[gcode_macro ...]` defined there replaces the stock macro with the same name. Everything else comes from the stock files as-is.
 
-### 5. Completion Sound Notification (`BEEP`)
-* Replaced sluggish double-beep with 3 crisp, distinct beeps (`BEEP I=3 DUR=200`) in `PRINT_END` so you immediately know when your print has completed.
+**Why the change:**
 
-### 6. Smoother Camera Streaming (30 FPS)
-* Raised camera framerate in `crowsnest.conf` from 15 FPS to **30 FPS**, taking full advantage of the hardware MJPG encoder on the internal camera for much smoother live video streaming in Fluidd/Mainsail.
+1. **Firmware updates overwrite the config.** Updating to `QD_Q2_01.01.03.02` silently replaced `printer.cfg`, `gcode_macro.cfg` and `crowsnest.conf` with new stock versions. All tweaks were lost, and the printer quietly went back to stock behavior: filament cutting, chute purge, `max_accel` 20,000.
+2. **The old modified files break new firmware.** The new stock files contain things the old copies do not have: macros `T0`–`T15`, `TRY_INTO_EXTRUDER`, `DROP_TRASH`, `_km_beep_if_available`, a new `G28` wrapper, and the `[box485]`/`[box2base]` sections. QIDI's closed-source modules call some of them. Copying the old modified files over a new firmware deletes them, which can break filament loading and multi-color printing with a QIDI Box.
+3. **The tweaks are easy to see and to undo.** All of them sit in one file, and edits inside copied macros are marked `[custom]`. Removing the `[include ...]` line returns the printer to pure stock.
+4. **Updates are easier to check.** [`stock/01.01.03.02/`](stock/01.01.03.02/) keeps the untouched stock files. After the next firmware update, one `diff` shows what QIDI changed, and you can see whether `custom_overrides.cfg` needs updating.
 
-### 7. Calibrated Input Shaper & Realistic Acceleration Limits
-* **Measured Frequencies (LIS2DW Accelerometer):**
-  * X axis: `shaper_type_x = ei`, `shaper_freq_x = 43.8 Hz` (residual vibrations ~6.2%).
-  * Y axis: `shaper_type_y = mzv`, `shaper_freq_y = 47.8 Hz` (residual vibrations **0.2%**).
-* **Safe Acceleration Limits:**
-  * Lowered theoretical `max_accel` from 20,000 mm/s² down to a realistic **6,000 mm/s²** in `[printer]`.
-  * Lowered macro defaults in `PRINT_START`, `PAUSE`, `RESUME`, `CANCEL_PRINT` from 10,000 to **5,000 mm/s²**.
-  * Added auto-clamping in `M204` to prevent slicer commands from exceeding `max_accel`, eliminating corner rounding and motor jerking.
+**If you installed an older version of this repository:** do not put the old modified `printer.cfg` / `gcode_macro.cfg` back. Keep the stock files that your current firmware installed, then follow [Installation](#-installation). If you are still on an older firmware than `01.01.03.02`, note that `custom_overrides.cfg` was made from the `01.01.03.02` stock macros. It has not been tested there.
 
-### 8. Firmware Bug Fix: Filament Loading Hangs at Step 2 (firmware `01.01.03.02`)
+---
 
-> **⚠️ If you updated to firmware `QD_Q2_01.01.03.02` and filament loading gets stuck at step 2, with this error in the Fluidd/Mainsail console:**
+## 🛠 What Is Changed
+
+Everything below lives in `custom_overrides.cfg`. Edits inside copied stock macros are marked `[custom]`.
+
+### 1. No Filament Cutting at Print Start (`CUT_FILAMENT_1`)
+* **Stock:** every print starts with a mechanical filament cut before leveling. Without a Box this is pointless: the cut stub stays in the extruder, and the blade wears out.
+* **Now:** `PRINT_START` calls `CUT_FILAMENT_1` only when the QIDI Box is enabled (`enable_box = 1`).
+* Unloading filament from the screen (`M603`) still uses the cutter, as it should.
+
+### 2. No Purge Into the Chute ("No-Poop" `CLEAR_NOZZLE`)
+* **Stock:** 85 mm of filament is pushed into the rear chute before every print.
+* **Now:** the purge happens only when the Box is enabled. Without the Box, the nozzle is heated, then cooled to 140 °C while it is wiped on the silicone brush. It reaches the bed clean and cold for accurate load-cell probing.
+* ⚠️ **The nozzle is then primed only by the purge line in your slicer's start G-code.** Keep it in the slicer profile. After a manual color change, expect a bit of the old color at the start of the print.
+
+### 3. Faster Bed Leveling
+* `[z_tilt]` and `[bed_mesh]`: travel speed **250 mm/s** (stock 150/100), `horizontal_move_z` **3 mm** (stock 5).
+* `[probe_air]`: `lift_speed` **10 mm/s** (stock 5). Dual probing (`samples: 2`) is kept.
+* `G29`: homes only if not homed yet (`_CG28` instead of `G28`), and two 5 s pauses are removed.
+* `PRINT_START`: the 3 s pause before `G29` is removed, since `M190`/`M191` already wait for temperatures.
+* If the Klipper log shows many `samples_tolerance` retries, the strain-gauge probe needs more settling time. Restore the pause in that case.
+
+### 4. Acceleration Limits and a Fixed `M204`
+* `[printer] max_accel` lowered from the theoretical **20,000** to **6,000 mm/s²**.
+* `M204` is clamped to `max_accel`. Stock macros and slicers ask for up to 10,000 mm/s², and plain Klipper would accept it above the limit. The clamp is why the stock `M204 S10000` calls in `PRINT_START`, `PAUSE`, `CANCEL_PRINT` and so on no longer need edits.
+* Also fixes stock `M204` crashing on `M204 P<n>` without `T` (Marlin-flavor slicer output) and on a plain `M204`.
+* **Re-run `SHAPER_CALIBRATE` after a firmware update.** The update resets input shaper to factory values. Keep `max_accel` at or below the lower of the two "suggested max_accel" values it reports. For reference, this printer measured `ei` 43.8 Hz on X and `mzv` 47.8 Hz on Y before the update.
+
+### 5. Bed Screw Tramming Assistant (`SCREWS_TILT_CALCULATE`)
+* `[screws_tilt_adjust]` for the 4 bed screws (CW-M4).
+* A wrapper prints instructions in Ukrainian: `CW` turn clockwise ↻, `CCW` turn counter-clockwise ↺, `00:15` is a quarter turn.
+
+### 6. Completion Beep
+* `PRINT_END` gives 3 short beeps (`BEEP I=3 DUR=200`) instead of 2 long ones.
+
+### 7. Camera at 30 FPS
+* `crowsnest.conf`: `max_fps` raised from 15 to **30**. This is the only change outside `custom_overrides.cfg`, because crowsnest has no include mechanism.
+
+### 🧩 Using It With a QIDI Box
+The changes that matter for multi-color printing (filament cut, chute purge) check `enable_box` and keep the stock behavior when the Box is enabled. Faster leveling, `max_accel` and `M204` apply to everybody. This config was tested **without** a Box. If you use a Box, check one multi-color print before relying on it.
+
+### Pressure Advance
+Not overridden. QIDI changed the stock value from 0.045 to 0.032 in `01.01.03.02`. It is better to calibrate pressure advance per filament and set it in the slicer's filament profile.
+
+---
+
+## 📥 Installation
+
+Work on an idle printer (not printing). Fluidd: `http://<printer-ip>` → **Configuration**.
+
+1. **Back up** your current `printer.cfg` and `crowsnest.conf` (download them in Fluidd).
+2. **Upload** [`custom_overrides.cfg`](custom_overrides.cfg) to the config folder, next to `printer.cfg`.
+3. **Add one line** at the end of your `printer.cfg`, right **before** the `#*# <---------------------- SAVE_CONFIG` block. It must come after all other `[include ...]` lines:
+   ```ini
+   [include custom_overrides.cfg]
+   ```
+4. In `crowsnest.conf` set `max_fps: 30` (optional).
+5. Click **Save & Restart**, or send `FIRMWARE_RESTART`.
+
+Do **not** overwrite your `printer.cfg` with the one from this repository. Its `#*# SAVE_CONFIG` block (input shaper, bed meshes, probe offset) is calibrated for *this* printer.
+
+**To undo:** remove the `[include custom_overrides.cfg]` line and restart.
+
+---
+
+## 🔄 After a Firmware Update
+
+A QIDI firmware update **overwrites `printer.cfg`, `gcode_macro.cfg` and `crowsnest.conf`** and resets input shaper and bed meshes. Your tweaks are silently gone, and the printer runs stock settings again.
+
+1. Download the new stock `printer.cfg`, `klipper-macros-qd/gcode_macro.cfg` and `crowsnest.conf` from the printer.
+2. Compare them with [`stock/01.01.03.02/`](stock/01.01.03.02/):
+   ```bash
+   diff -u --strip-trailing-cr stock/01.01.03.02/klipper-macros-qd/gcode_macro.cfg new/gcode_macro.cfg
+   ```
+   * If `PRINT_START`, `CLEAR_NOZZLE`, `PRINT_END` or `G29` changed, port QIDI's changes into `custom_overrides.cfg`. Otherwise this file would hide them.
+   * If nothing relevant changed, you only need to re-add the `[include custom_overrides.cfg]` line.
+3. Re-run `SHAPER_CALIBRATE` and bed meshing.
+4. Check whether the [filament loading fix](#-firmware-bug-fix-filament-loading-hangs-at-step-2) is still needed.
+
+---
+
+## 🐞 Firmware Bug Fix: Filament Loading Hangs at Step 2
+
+> [!WARNING]
+> **If you updated to firmware `QD_Q2_01.01.03.02` and filament loading gets stuck at step 2, with this error in the Fluidd/Mainsail console:**
 > ```
 > !! Unable to parse 'slot16' as a literal
 > ```
 > **run [`fixes/fix_save_variable_unquoted.sh`](fixes/fix_save_variable_unquoted.sh) on the printer (see "How to apply" below). It fixes the problem.**
 >
-> The script is **not** applied automatically by copying this config. You have to run it manually once.
+> The script is **not** applied by installing this config. You have to run it manually once.
 
 * **Affected firmware:** `QD_Q2_01.01.03.02` (SOC build `01.01.03.02_20261023`). Filament loading worked fine on the previous version `01.01.02.04`. You can check your version on the printer screen or in `/home/qidi/update/` (`QD_Q2_SOC_*` file name).
 * **The Problem:** Loading filament from the touchscreen heats the nozzle, then gets stuck on step 2. The closed-source `multi_color_controller` sends `SAVE_VARIABLE ... VALUE=slot16` without quotes. Stock `save_variables.py` rejects it, so the loading flow aborts and resets itself.
@@ -81,10 +148,11 @@ Pre-print bed calibration time is cut almost in half without compromising precis
 
 ## 📂 Repository Structure
 
-* `printer.cfg` — Main Klipper configuration (kinematics, TMC stepper drivers, axis limits, `probe_air` sensor, `[bed_mesh]`, `[z_tilt]`, and `[screws_tilt_adjust]`).
-* `klipper-macros-qd/gcode_macro.cfg` — Core QIDI macros (`PRINT_START`, `CLEAR_NOZZLE`, `G29`, `SCREWS_TILT_CALCULATE`, `PRINT_END`, etc.).
-* `klipper-macros-qd/KAMP_Settings.cfg` — KAMP adaptive mesh configuration.
-* `moonraker.conf` — Moonraker API server configuration.
-* `MCU_ID.cfg` — Toolhead and mainboard MCU serial IDs.
-* `crowsnest.conf`, `timelapse.cfg` — Webcam streaming (30 FPS) and timelapse settings.
-* `fixes/fix_save_variable_unquoted.sh` — Patch for the "Unable to parse 'slot16' as a literal" filament loading bug (run on the printer via SSH).
+* `custom_overrides.cfg` — **all tweaks**, included at the end of `printer.cfg`.
+* `printer.cfg` — stock `01.01.03.02` config of this printer plus the `[include custom_overrides.cfg]` line. Its `SAVE_CONFIG` block is printer-specific.
+* `klipper-macros-qd/gcode_macro.cfg` — stock QIDI macros, unchanged.
+* `stock/01.01.03.02/` — untouched stock files from firmware `01.01.03.02`, for comparing after updates.
+* `fixes/fix_save_variable_unquoted.sh` — patch for the "Unable to parse 'slot16' as a literal" filament loading bug (run on the printer via SSH).
+* `crowsnest.conf` — webcam streaming (30 FPS).
+* `MCU_ID.cfg` — serial IDs of **this** printer's MCUs. Never copy it to another printer: Klipper will not start.
+* `KAMP/`, `klipper-macros-qd/KAMP_Settings.cfg`, `timelapse.cfg`, `moonraker.conf`, `fluidd.cfg`, … — stock files, kept as a backup.
