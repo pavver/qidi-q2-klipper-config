@@ -71,7 +71,7 @@ Everything below lives in `custom_overrides.cfg`. Edits inside copied stock macr
 
 ### 5. Bed Screw Tramming Assistant (`SCREWS_TILT_CALCULATE`)
 * `[screws_tilt_adjust]` for the 4 bed screws (CW-M4).
-* A wrapper prints instructions in Ukrainian: `CW` turn clockwise ↻, `CCW` turn counter-clockwise ↺, `00:15` is a quarter turn.
+* A wrapper prints how to read the result: `CW` turn clockwise ↻, `CCW` turn counter-clockwise ↺, `00:15` is a quarter turn. Front left is the base screw.
 
 ### 6. Completion Beep
 * `PRINT_END` gives 3 short beeps (`BEEP I=3 DUR=200`) instead of 2 long ones.
