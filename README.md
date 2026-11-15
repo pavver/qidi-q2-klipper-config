@@ -30,7 +30,9 @@ Klipper reads the config from top to bottom, and **a later definition wins**. A 
 1. **Firmware updates overwrite the config.** Updating to `QD_Q2_01.01.03.02` silently replaced `printer.cfg`, `gcode_macro.cfg` and `crowsnest.conf` with new stock versions. All tweaks were lost, and the printer quietly went back to stock behavior: filament cutting, chute purge, `max_accel` 20,000.
 2. **The old modified files break new firmware.** The new stock files contain things the old copies do not have: macros `T0`–`T15`, `TRY_INTO_EXTRUDER`, `DROP_TRASH`, `_km_beep_if_available`, a new `G28` wrapper, and the `[box485]`/`[box2base]` sections. QIDI's closed-source modules call some of them. Copying the old modified files over a new firmware deletes them, which can break filament loading and multi-color printing with a QIDI Box.
 3. **The tweaks are easy to see and to undo.** All of them sit in one file, and edits inside copied macros are marked `[custom]`. Removing the `[include ...]` line returns the printer to pure stock.
-4. **Updates are easier to check.** [`stock/01.01.03.02/`](stock/01.01.03.02/) keeps the untouched stock files. After the next firmware update, one `diff` shows what QIDI changed, and you can see whether `custom_overrides.cfg` needs updating.
+4. **Updates are easier to check.** [`stock/01.01.03.02/`](stock/01.01.03.02/) keeps the untouched stock config folder of that firmware. After the next firmware update, a new `stock/<version>/` folder is added next to it, and one `diff` shows what QIDI changed and whether `custom_overrides.cfg` needs updating.
+
+The repository root therefore contains **only own files** (`custom_overrides.cfg`, `fixes/`). Everything that comes from QIDI lives in `stock/<firmware version>/`.
 
 **If you installed an older version of this repository:** do not put the old modified `printer.cfg` / `gcode_macro.cfg` back. Keep the stock files that your current firmware installed, then follow [Installation](#-installation). If you are still on an older firmware than `01.01.03.02`, note that `custom_overrides.cfg` was made from the `01.01.03.02` stock macros. It has not been tested there.
 
@@ -71,7 +73,7 @@ Everything below lives in `custom_overrides.cfg`. Edits inside copied stock macr
 * `PRINT_END` gives 3 short beeps (`BEEP I=3 DUR=200`) instead of 2 long ones.
 
 ### 7. Camera at 30 FPS
-* `crowsnest.conf`: `max_fps` raised from 15 to **30**. This is the only change outside `custom_overrides.cfg`, because crowsnest has no include mechanism.
+* `crowsnest.conf`: `max_fps` raised from 15 to **30**. This is the only change outside `custom_overrides.cfg`, because crowsnest has no include mechanism. It is a one-line manual edit (see [Installation](#-installation)).
 
 ### 🧩 Using It With a QIDI Box
 The changes that matter for multi-color printing (filament cut, chute purge) check `enable_box` and keep the stock behavior when the Box is enabled. Faster leveling, `max_accel` and `M204` apply to everybody. This config was tested **without** a Box. If you use a Box, check one multi-color print before relying on it.
@@ -94,7 +96,7 @@ Work on an idle printer (not printing). Fluidd: `http://<printer-ip>` → **Conf
 4. In `crowsnest.conf` set `max_fps: 30` (optional).
 5. Click **Save & Restart**, or send `FIRMWARE_RESTART`.
 
-Do **not** overwrite your `printer.cfg` with the one from this repository. Its `#*# SAVE_CONFIG` block (input shaper, bed meshes, probe offset) is calibrated for *this* printer.
+Edit **your own** `printer.cfg`, do not replace it with `stock/01.01.03.02/printer.cfg`. The `#*# SAVE_CONFIG` block at the end of every `printer.cfg` (input shaper, bed meshes, probe offset) is calibrated for one specific printer. The stock copy in this repository contains the factory values of the author's printer.
 
 **To undo:** remove the `[include custom_overrides.cfg]` line and restart.
 
@@ -104,10 +106,10 @@ Do **not** overwrite your `printer.cfg` with the one from this repository. Its `
 
 A QIDI firmware update **overwrites `printer.cfg`, `gcode_macro.cfg` and `crowsnest.conf`** and resets input shaper and bed meshes. Your tweaks are silently gone, and the printer runs stock settings again.
 
-1. Download the new stock `printer.cfg`, `klipper-macros-qd/gcode_macro.cfg` and `crowsnest.conf` from the printer.
-2. Compare them with [`stock/01.01.03.02/`](stock/01.01.03.02/):
+1. Before changing anything, download the whole config folder from the printer (Fluidd → Configuration). Save it into this repository as `stock/<new version>/`, for example `stock/01.01.04.01/`. Leave out `MCU_ID.cfg`, `saved_variables.cfg` and backup files: they are printer-specific state, not stock files.
+2. Compare it with the previous stock version:
    ```bash
-   diff -u --strip-trailing-cr stock/01.01.03.02/klipper-macros-qd/gcode_macro.cfg new/gcode_macro.cfg
+   diff -ru --strip-trailing-cr stock/01.01.03.02/ stock/<new version>/
    ```
    * If `PRINT_START`, `CLEAR_NOZZLE`, `PRINT_END` or `G29` changed, port QIDI's changes into `custom_overrides.cfg`. Otherwise this file would hide them.
    * If nothing relevant changed, you only need to re-add the `[include custom_overrides.cfg]` line.
@@ -148,11 +150,9 @@ A QIDI firmware update **overwrites `printer.cfg`, `gcode_macro.cfg` and `crowsn
 
 ## 📂 Repository Structure
 
-* `custom_overrides.cfg` — **all tweaks**, included at the end of `printer.cfg`.
-* `printer.cfg` — stock `01.01.03.02` config of this printer plus the `[include custom_overrides.cfg]` line. Its `SAVE_CONFIG` block is printer-specific.
-* `klipper-macros-qd/gcode_macro.cfg` — stock QIDI macros, unchanged.
-* `stock/01.01.03.02/` — untouched stock files from firmware `01.01.03.02`, for comparing after updates.
+**Own files (root):**
+* `custom_overrides.cfg` — **all tweaks**. Upload it next to `printer.cfg` and include it at the end of `printer.cfg`.
 * `fixes/fix_save_variable_unquoted.sh` — patch for the "Unable to parse 'slot16' as a literal" filament loading bug (run on the printer via SSH).
-* `crowsnest.conf` — webcam streaming (30 FPS).
-* `MCU_ID.cfg` — serial IDs of **this** printer's MCUs. Never copy it to another printer: Klipper will not start.
-* `KAMP/`, `klipper-macros-qd/KAMP_Settings.cfg`, `timelapse.cfg`, `moonraker.conf`, `fluidd.cfg`, … — stock files, kept as a backup.
+
+**Stock QIDI files (`stock/<firmware version>/`):**
+* [`stock/01.01.03.02/`](stock/01.01.03.02/) — the complete, untouched config folder installed by firmware `QD_Q2_01.01.03.02`: `printer.cfg`, `klipper-macros-qd/`, `KAMP/`, `crowsnest.conf`, `timelapse.cfg`, `moonraker.conf`, … Used as a reference for comparing after firmware updates. Do not copy it to the printer as-is. `printer.cfg` there contains the author's factory `SAVE_CONFIG` block, and `MCU_ID.cfg` (MCU serial IDs) is deliberately not stored, because it is unique to each printer.
