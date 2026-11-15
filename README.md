@@ -50,6 +50,33 @@ Pre-print bed calibration time is cut almost in half without compromising precis
   * Lowered macro defaults in `PRINT_START`, `PAUSE`, `RESUME`, `CANCEL_PRINT` from 10,000 to **5,000 mm/s²**.
   * Added auto-clamping in `M204` to prevent slicer commands from exceeding `max_accel`, eliminating corner rounding and motor jerking.
 
+### 8. Firmware Bug Fix: Filament Loading Hangs at Step 2 (firmware `01.01.03.02`)
+
+> **⚠️ If you updated to firmware `QD_Q2_01.01.03.02` and filament loading gets stuck at step 2, with this error in the Fluidd/Mainsail console:**
+> ```
+> !! Unable to parse 'slot16' as a literal
+> ```
+> **run [`fixes/fix_save_variable_unquoted.sh`](fixes/fix_save_variable_unquoted.sh) on the printer (see "How to apply" below). It fixes the problem.**
+>
+> The script is **not** applied automatically by copying this config. You have to run it manually once.
+
+* **Affected firmware:** `QD_Q2_01.01.03.02` (SOC build `01.01.03.02_20261023`). Filament loading worked fine on the previous version `01.01.02.04`. You can check your version on the printer screen or in `/home/qidi/update/` (`QD_Q2_SOC_*` file name).
+* **The Problem:** Loading filament from the touchscreen heats the nozzle, then gets stuck on step 2. The closed-source `multi_color_controller` sends `SAVE_VARIABLE ... VALUE=slot16` without quotes. Stock `save_variables.py` rejects it, so the loading flow aborts and resets itself.
+* **The Fix:** The script patches `/home/qidi/klipper/klippy/extras/save_variables.py` so that values which cannot be parsed are stored as plain strings instead of raising an error.
+* **Safe with a QIDI Box:** Only values that used to fail are affected. Numbers, quoted strings, `True`/`False` and lists are parsed exactly as before.
+* **Safety checks:** The script refuses to run while printing, makes a backup (`save_variables.py.orig`), and stops without touching anything if your firmware's code differs from the expected one.
+* **How to apply** (this file lives outside the config folder, so it needs SSH):
+  * **Default SSH credentials:** login `mks`, password `makerbase`. The `mks` user can run `sudo` with the same password, which the script needs.
+  * `<printer-ip>` is the printer's IP address (shown on the printer screen under network settings), or its hostname if you have one set up (e.g. `klipper.local`).
+  ```bash
+  scp fixes/fix_save_variable_unquoted.sh mks@<printer-ip>:/tmp/
+  ssh mks@<printer-ip>
+  bash /tmp/fix_save_variable_unquoted.sh            # apply
+  bash /tmp/fix_save_variable_unquoted.sh --revert   # undo
+  ```
+  The script restarts the `klipper` service (`FIRMWARE_RESTART` does not reload Python modules).
+* **Note:** A firmware update may overwrite the file. If the error returns, run the script again.
+
 ---
 
 ## 📂 Repository Structure
@@ -60,3 +87,4 @@ Pre-print bed calibration time is cut almost in half without compromising precis
 * `moonraker.conf` — Moonraker API server configuration.
 * `MCU_ID.cfg` — Toolhead and mainboard MCU serial IDs.
 * `crowsnest.conf`, `timelapse.cfg` — Webcam streaming (30 FPS) and timelapse settings.
+* `fixes/fix_save_variable_unquoted.sh` — Patch for the "Unable to parse 'slot16' as a literal" filament loading bug (run on the printer via SSH).
