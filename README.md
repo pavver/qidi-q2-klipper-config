@@ -1,6 +1,10 @@
-# QIDI Q2 — Optimized Klipper Configuration
+# QIDI Q2 Klipper Config, Macros & Firmware Fixes
+
+**English** | [Українська](README.uk.md)
 
 Klipper/Moonraker configuration for the **QIDI Q2** 3D printer (270×270 mm bed), tuned for daily single-spool printing **without a QIDI Box**: no filament cutting and purging at every print start, faster bed leveling, sane acceleration limits and a few quality-of-life helpers.
+
+Also includes a **fix for the QIDI Q2 firmware `01.01.03.02` bug**: after the update, filament loading from the touchscreen gets stuck at step 2 with `Unable to parse 'slot16' as a literal`. → [Jump to the fix](#-firmware-bug-fix-filament-loading-hangs-at-step-2)
 
 All changes live in one file, [`custom_overrides.cfg`](custom_overrides.cfg), on top of the **unchanged stock QIDI config**. Because of that, QIDI's own macros and multi-color logic keep working.
 
@@ -170,6 +174,31 @@ Also new in this firmware, outside the config: the [filament loading bug](#-firm
 
 ---
 
+## ❓ Troubleshooting / FAQ
+
+### QIDI Q2 does not load filament after the firmware update (stuck at step 2)
+This is a bug in firmware `01.01.03.02`. The console shows `!! Unable to parse 'slot16' as a literal`. Run the one-time fix: [Filament Loading Hangs at Step 2](#-firmware-bug-fix-filament-loading-hangs-at-step-2).
+
+### My Klipper settings disappeared after a QIDI firmware update
+A QIDI update overwrites `printer.cfg` and `gcode_macro.cfg` and resets input shaper and bed meshes. With this config you only re-add one `[include custom_overrides.cfg]` line. See [After a Firmware Update](#-after-a-firmware-update).
+
+### Can I use this config with a QIDI Box (multi-color)?
+Yes. Filament cutting and chute purge stay stock when the Box is enabled. It was tested without a Box, so check one multi-color print first. See [Using It With a QIDI Box](#-using-it-with-a-qidi-box).
+
+### Does it work on QIDI Plus 4, Q1 Pro or Max 4?
+No. This config is for the **QIDI Q2** only. Other models have different beds, axis limits and macros.
+
+### How do I SSH into the QIDI Q2?
+`ssh mks@<printer-ip>`, default password `makerbase`. The same password works for `sudo`.
+
+### How do I go back to the stock config?
+Remove the `[include custom_overrides.cfg]` line from `printer.cfg` and restart Klipper. Stock files were never modified.
+
+### Why does the print start without purging into the chute?
+On purpose, for single-spool printing. The purge line from the slicer's start G-code primes the nozzle. See [No Purge Into the Chute](#2-no-purge-into-the-chute-no-poop-clear_nozzle).
+
+---
+
 ## 📂 Repository Structure
 
 **Own files (root):**
@@ -178,5 +207,11 @@ Also new in this firmware, outside the config: the [filament loading bug](#-firm
   * `fixes/01.01.03.02/fix_save_variable_unquoted.sh` — patch for the "Unable to parse 'slot16' as a literal" filament loading bug (run on the printer via SSH).
 
 **Stock QIDI files (`stock/<firmware version>/`):**
-* [`stock/01.01.02.04/`](stock/01.01.02.04/) — the same for the previous firmware `QD_Q2_01.01.02.04`. Taken from the first backup of this printer, before any tweaks.
 * [`stock/01.01.03.02/`](stock/01.01.03.02/) — the complete, untouched config folder installed by firmware `QD_Q2_01.01.03.02`: `printer.cfg`, `klipper-macros-qd/`, `KAMP/`, `crowsnest.conf`, `timelapse.cfg`, `moonraker.conf`, … Used as a reference for comparing after firmware updates. Do not copy it to the printer as-is. `printer.cfg` there contains the author's factory `SAVE_CONFIG` block, and `MCU_ID.cfg` (MCU serial IDs) is deliberately not stored, because it is unique to each printer.
+* [`stock/01.01.02.04/`](stock/01.01.02.04/) — the same for the previous firmware `QD_Q2_01.01.02.04`. Taken from the first backup of this printer, before any tweaks.
+
+---
+
+## 📄 License
+
+[GPL-3.0](LICENSE), the same license as [Klipper](https://github.com/Klipper3d/klipper). The stock QIDI files in `stock/` and the macro copies in `custom_overrides.cfg` are derived from QIDI's Klipper configuration. The fix patches Klipper's GPL-3.0 `save_variables.py`.
