@@ -118,6 +118,28 @@ A QIDI firmware update **overwrites `printer.cfg`, `gcode_macro.cfg` and `crowsn
 
 ---
 
+## 📋 What QIDI Changed in `01.01.03.02` (vs `01.01.02.04`)
+
+Found by comparing [`stock/01.01.02.04/`](stock/01.01.02.04/) and [`stock/01.01.03.02/`](stock/01.01.03.02/). Only `printer.cfg` and `klipper-macros-qd/gcode_macro.cfg` changed. All other stock files are identical.
+
+**`printer.cfg`:**
+* New sections `[box485]` (RS485 link to the QIDI Box) and `[box2base]`.
+* `pressure_advance`: 0.045 → **0.032**.
+* Filament runout: `AUTO_RELOAD_FILAMENT` no longer checks `printer["box_extras"]`.
+
+**`gcode_macro.cfg`:**
+* New `G28` wrapper with `LAZY_HOME` (Marlin-style `G28 O` skips already homed axes). Homing macros now call the renamed original `G28.6245197`.
+* `[homing_override]`: `axes: xy` → `xyz`. The `X+Y` homing path was reworked.
+* `PRINTER_INIT` calls `INIT_RFID_READ` at startup.
+* `RESUME`: the stock filament / Box checks were replaced by a single `TRY_RESUME_PRINT` call.
+* `M604` (filament load) turns off the fan and heater at the end.
+* New macros: `T0`–`T15` (`T_MANAGER`), `TRY_INTO_EXTRUDER`, `MOVE_ANOTHER_POINT_CHANGE_FILAMENT`, `DROP_TRASH`, `WIPE_NOZZLE_DROP`, `_km_beep_if_available`.
+* `PRINT_START`, `CLEAR_NOZZLE`, `PRINT_END` and `G29` did **not** change, so the copies in `custom_overrides.cfg` match both versions.
+
+Also new in this firmware, outside the config: the [filament loading bug](#-firmware-bug-fix-filament-loading-hangs-at-step-2).
+
+---
+
 ## 🐞 Firmware Bug Fix: Filament Loading Hangs at Step 2
 
 > [!WARNING]
@@ -155,4 +177,5 @@ A QIDI firmware update **overwrites `printer.cfg`, `gcode_macro.cfg` and `crowsn
 * `fixes/fix_save_variable_unquoted.sh` — patch for the "Unable to parse 'slot16' as a literal" filament loading bug (run on the printer via SSH).
 
 **Stock QIDI files (`stock/<firmware version>/`):**
+* [`stock/01.01.02.04/`](stock/01.01.02.04/) — the same for the previous firmware `QD_Q2_01.01.02.04`. Taken from the first backup of this printer, before any tweaks.
 * [`stock/01.01.03.02/`](stock/01.01.03.02/) — the complete, untouched config folder installed by firmware `QD_Q2_01.01.03.02`: `printer.cfg`, `klipper-macros-qd/`, `KAMP/`, `crowsnest.conf`, `timelapse.cfg`, `moonraker.conf`, … Used as a reference for comparing after firmware updates. Do not copy it to the printer as-is. `printer.cfg` there contains the author's factory `SAVE_CONFIG` block, and `MCU_ID.cfg` (MCU serial IDs) is deliberately not stored, because it is unique to each printer.
